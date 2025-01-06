@@ -462,7 +462,7 @@ export default function Home() {
         currentIndex: 0
       });
     }
-  }, [isLoaded]);
+  }, [isLoaded, orders]);
 
   const addToHistory = useCallback((newOrders: Order[]) => {
     setOrderHistory(prev => {
@@ -498,14 +498,14 @@ export default function Home() {
     });
   }, []);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setEditingOrder(null);
     setName('');
     setMeatMomos(0);
     setVeggieMomos(0);
     setWantsSoySauce(true);
     setErrors({ name: '', meatMomos: '', veggieMomos: '', total: '' });
-  };
+  }, []);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -844,7 +844,7 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
-              </div>
+        </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-4">
@@ -1163,7 +1163,7 @@ export default function Home() {
             </li>
           </ul>
         </div>
-      </div>
+    </div>
     </>
   );
 }
