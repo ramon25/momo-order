@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Order, NameConfig } from '../../types';
 
 interface OrderFormProps {
   nameConfigs: NameConfig[];
-  onSubmit: (order: Order) => void;
+  onSubmit: (order: Omit<Order, 'id'>) => void;
   editingOrder: { index: number; order: Order } | null;
   onCancelEdit: () => void;
   isSubmitting: boolean;
@@ -30,16 +30,26 @@ export function OrderForm({
   onCancelEdit,
   isSubmitting,
 }: OrderFormProps) {
-  const [name, setName] = useState(editingOrder?.order.name || '');
-  const [meatMomos, setMeatMomos] = useState(editingOrder?.order.meatMomos || 0);
-  const [veggieMomos, setVeggieMomos] = useState(editingOrder?.order.veggieMomos || 0);
-  const [wantsSoySauce, setWantsSoySauce] = useState(editingOrder?.order.wantsSoySauce ?? true);
+  const [name, setName] = useState('');
+  const [meatMomos, setMeatMomos] = useState(0);
+  const [veggieMomos, setVeggieMomos] = useState(0);
+  const [wantsSoySauce, setWantsSoySauce] = useState(true);
   const [errors, setErrors] = useState<FormErrors>({
     name: '',
     meatMomos: '',
     veggieMomos: '',
     total: ''
   });
+
+  // Update form fields when editingOrder changes
+  useEffect(() => {
+    if (editingOrder) {
+      setName(editingOrder.order.name);
+      setMeatMomos(editingOrder.order.meatMomos);
+      setVeggieMomos(editingOrder.order.veggieMomos);
+      setWantsSoySauce(editingOrder.order.wantsSoySauce);
+    }
+  }, [editingOrder]);
 
   const validateForm = () => {
     const newErrors = {
@@ -92,12 +102,12 @@ export function OrderForm({
         veggieMomos,
         wantsSoySauce
       });
-      if (!editingOrder) {
-        setName('');
-        setMeatMomos(0);
-        setVeggieMomos(0);
-        setWantsSoySauce(true);
-      }
+      // Clear fields after both adding and updating
+      setName('');
+      setMeatMomos(0);
+      setVeggieMomos(0);
+      setWantsSoySauce(true);
+      setErrors({ name: '', meatMomos: '', veggieMomos: '', total: '' });
     }
   };
 

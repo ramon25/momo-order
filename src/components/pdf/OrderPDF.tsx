@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import QRCode from 'qrcode';
 import { Order } from '../../types';
-import { anonymizeName } from '../../utils/helpers';
 
 const styles = StyleSheet.create({
   page: {
@@ -42,8 +41,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
     marginBottom: 8,
   },
   orderName: {
@@ -71,8 +70,8 @@ const styles = StyleSheet.create({
     borderTopColor: '#e2e8f0',
   },
   totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
     marginBottom: 8,
   },
   totalLabel: {
@@ -86,13 +85,13 @@ const styles = StyleSheet.create({
     color: '#2b6cb0',
   },
   footer: {
-    position: 'absolute',
+    position: 'absolute' as const,
     bottom: 40,
     left: 40,
     right: 40,
     fontSize: 10,
     color: '#718096',
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   graphSection: {
     marginBottom: 30,
@@ -149,11 +148,12 @@ const styles = StyleSheet.create({
   },
 });
 
-interface OrderPDFProps {
-  orders: Order[];
-}
+const anonymizeName = (name: string) => {
+  if (name.length <= 2) return name;
+  return `${name[0]}${'.'.repeat(Math.min(3, name.length - 2))}${name[name.length - 1]}`;
+};
 
-export function OrderPDF({ orders }: OrderPDFProps) {
+export function OrderPDF({ orders }: { orders: Order[] }) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
   useEffect(() => {
@@ -191,14 +191,14 @@ export function OrderPDF({ orders }: OrderPDFProps) {
   const graphScale = maxMomos > 0 ? 200 / maxMomos : 1;
 
   // Group orders by name and anonymize the names
-  const groupedOrders = orders.reduce<Record<string, Order[]>>((groups, order) => {
+  const groupedOrders = orders.reduce((groups, order) => {
     const anonymizedName = anonymizeName(order.name);
     if (!groups[anonymizedName]) {
       groups[anonymizedName] = [];
     }
     groups[anonymizedName].push(order);
     return groups;
-  }, {});
+  }, {} as Record<string, Order[]>);
 
   return (
     <Document>
@@ -243,11 +243,11 @@ export function OrderPDF({ orders }: OrderPDFProps) {
               <View style={styles.orderHeader}>
                 <Text style={styles.orderName}>{anonymizedName}</Text>
                 <Text style={styles.orderTotal}>
-                  CHF {userOrders.reduce((sum: number, order: Order) => sum + (order.meatMomos + order.veggieMomos) * 2, 0)}
+                  CHF {userOrders.reduce((sum, order) => sum + (order.meatMomos + order.veggieMomos) * 2, 0)}
                 </Text>
               </View>
               <View style={styles.orderDetails}>
-                {userOrders.map((order: Order, index: number) => (
+                {userOrders.map((order, index) => (
                   <View key={index}>
                     {order.meatMomos > 0 && (
                       <Text style={styles.orderItem}>• Meat Momos: {order.meatMomos} × CHF 2 = CHF {order.meatMomos * 2}</Text>
