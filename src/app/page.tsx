@@ -3,12 +3,22 @@
 import { useState, useEffect, Fragment } from 'react';
 import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
 
+interface NameConfig {
+  name: string;
+  defaultSoySauce: boolean;
+}
+
 interface Order {
   name: string;
   meatMomos: number;
   veggieMomos: number;
   wantsSoySauce: boolean;
 }
+
+const anonymizeName = (name: string) => {
+  if (name.length <= 2) return name;
+  return `${name[0]}${'.'.repeat(Math.min(3, name.length - 2))}${name[name.length - 1]}`;
+};
 
 const styles = StyleSheet.create({
   page: {
@@ -105,13 +115,26 @@ const styles = StyleSheet.create({
 const ConfirmDialog = ({ 
   isOpen, 
   onClose, 
-  onConfirm 
+  onConfirm,
+  title,
+  message,
+  confirmText = 'Confirm',
+  confirmStyle = 'danger'
 }: { 
-  isOpen: boolean; 
-  onClose: () => void; 
+  isOpen: boolean;
+  onClose: () => void;
   onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  confirmStyle?: 'danger' | 'primary';
 }) => {
   if (!isOpen) return null;
+
+  const buttonStyles = {
+    danger: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
+    primary: 'bg-[#1d4f91] hover:bg-[#15396d] focus:ring-[#1d4f91]'
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -127,11 +150,11 @@ const ConfirmDialog = ({
             </div>
             <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
               <h3 className="text-lg font-medium leading-6 text-gray-900">
-                Clear All Orders
+                {title}
               </h3>
               <div className="mt-2">
                 <p className="text-sm text-gray-500">
-                  Are you sure you want to clear all orders? This action cannot be undone.
+                  {message}
                 </p>
               </div>
             </div>
@@ -143,9 +166,9 @@ const ConfirmDialog = ({
                 onConfirm();
                 onClose();
               }}
-              className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              className={`w-full sm:w-auto px-4 py-2 text-sm font-medium text-white ${buttonStyles[confirmStyle]} rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2`}
             >
-              Clear All
+              {confirmText}
             </button>
             <button
               type="button"
@@ -169,6 +192,16 @@ const OrderPDF = ({ orders }: { orders: Order[] }) => {
     acc + order.meatMomos + order.veggieMomos, 0
   );
 
+  // Group orders by name and anonymize the names
+  const groupedOrders = orders.reduce((groups, order) => {
+    const anonymizedName = anonymizeName(order.name);
+    if (!groups[anonymizedName]) {
+      groups[anonymizedName] = [];
+    }
+    groups[anonymizedName].push(order);
+    return groups;
+  }, {} as Record<string, Order[]>);
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -184,22 +217,28 @@ const OrderPDF = ({ orders }: { orders: Order[] }) => {
 
         <View style={styles.orderSection}>
           <Text style={styles.sectionTitle}>Order Details</Text>
-          {orders.map((order, index) => (
-            <View key={index} style={styles.order}>
+          {Object.entries(groupedOrders).map(([anonymizedName, userOrders]) => (
+            <View key={anonymizedName} style={styles.order}>
               <View style={styles.orderHeader}>
-                <Text style={styles.orderName}>{order.name}</Text>
-                <Text style={styles.orderTotal}>CHF {(order.meatMomos + order.veggieMomos) * 2}</Text>
+                <Text style={styles.orderName}>{anonymizedName}</Text>
+                <Text style={styles.orderTotal}>
+                  CHF {userOrders.reduce((sum, order) => sum + (order.meatMomos + order.veggieMomos) * 2, 0)}
+                </Text>
               </View>
               <View style={styles.orderDetails}>
-                {order.meatMomos > 0 && (
-                  <Text style={styles.orderItem}>• Meat Momos: {order.meatMomos} × CHF 2 = CHF {order.meatMomos * 2}</Text>
-                )}
-                {order.veggieMomos > 0 && (
-                  <Text style={styles.orderItem}>• Veggie Momos: {order.veggieMomos} × CHF 2 = CHF {order.veggieMomos * 2}</Text>
-                )}
-                <Text style={[styles.orderItem, { color: '#718096' }]}>
-                  {order.wantsSoySauce ? '• With soy sauce' : '• No soy sauce'}
-                </Text>
+                {userOrders.map((order, index) => (
+                  <View key={index}>
+                    {order.meatMomos > 0 && (
+                      <Text style={styles.orderItem}>• Meat Momos: {order.meatMomos} × CHF 2 = CHF {order.meatMomos * 2}</Text>
+                    )}
+                    {order.veggieMomos > 0 && (
+                      <Text style={styles.orderItem}>• Veggie Momos: {order.veggieMomos} × CHF 2 = CHF {order.veggieMomos * 2}</Text>
+                    )}
+                    <Text style={[styles.orderItem, { color: '#718096' }]}>
+                      {order.wantsSoySauce ? '• With soy sauce' : '• No soy sauce'}
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
           ))}
@@ -231,6 +270,7 @@ const OrderPDF = ({ orders }: { orders: Order[] }) => {
 
 export default function Home() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [nameConfigs, setNameConfigs] = useState<NameConfig[]>([]);
   const [name, setName] = useState('');
   const [meatMomos, setMeatMomos] = useState(0);
   const [veggieMomos, setVeggieMomos] = useState(0);
@@ -238,31 +278,43 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<{ index: number; order: Order } | null>(null);
+  const [isConfiguring, setIsConfiguring] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newNameSoySauce, setNewNameSoySauce] = useState(true);
   const [errors, setErrors] = useState({
     name: '',
     meatMomos: '',
     veggieMomos: '',
     total: ''
   });
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [editingOrder, setEditingOrder] = useState<{ index: number; order: Order } | null>(null);
 
-  // Load orders from localStorage only after component mounts
+  // Load data from localStorage
   useEffect(() => {
-    const loadOrders = async () => {
+    const loadData = async () => {
       setIsLoading(true);
       try {
         const savedOrders = localStorage.getItem('momoOrders');
+        const savedNameConfigs = localStorage.getItem('momoNameConfigs');
+        
         if (savedOrders) {
           setOrders(JSON.parse(savedOrders));
         }
+        if (savedNameConfigs) {
+          setNameConfigs(JSON.parse(savedNameConfigs));
+        } else {
+          // Initialize with empty array
+          setNameConfigs([]);
+          localStorage.setItem('momoNameConfigs', JSON.stringify([]));
+        }
       } catch (error) {
-        console.error('Error loading orders:', error);
+        console.error('Error loading data:', error);
       }
       setIsLoaded(true);
       setIsLoading(false);
     };
-    loadOrders();
+    loadData();
   }, []);
 
   // Save orders to localStorage whenever they change
@@ -272,13 +324,39 @@ export default function Home() {
     }
   }, [orders, isLoaded]);
 
-  const predefinedNames = [
-    'Ramon',
-    'Roger',
-    'Sandro',
-    'Paavo',
-    'Janik'
-  ];
+  // Save name configs to localStorage whenever they change
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('momoNameConfigs', JSON.stringify(nameConfigs));
+    }
+  }, [nameConfigs, isLoaded]);
+
+  const handleNameSelect = (selectedName: string) => {
+    setName(selectedName);
+    const config = nameConfigs.find(c => c.name === selectedName);
+    if (config) {
+      setWantsSoySauce(config.defaultSoySauce);
+    }
+    setErrors(prev => ({ ...prev, name: '' }));
+  };
+
+  const handleAddName = () => {
+    if (newName.trim() && !nameConfigs.some(c => c.name === newName.trim())) {
+      setNameConfigs(prev => [...prev, { name: newName.trim(), defaultSoySauce: newNameSoySauce }]);
+      setNewName('');
+      setNewNameSoySauce(true);
+    }
+  };
+
+  const handleRemoveName = (nameToRemove: string) => {
+    setNameConfigs(prev => prev.filter(c => c.name !== nameToRemove));
+  };
+
+  const handleUpdateNamePreference = (name: string, defaultSoySauce: boolean) => {
+    setNameConfigs(prev => prev.map(c => 
+      c.name === name ? { ...c, defaultSoySauce } : c
+    ));
+  };
 
   const quickOrders = [
     { meat: 5, veggie: 5, label: '5 Meat + 5 Veggie', price: 20 },
@@ -435,6 +513,10 @@ export default function Home() {
         isOpen={isConfirmDialogOpen}
         onClose={() => setIsConfirmDialogOpen(false)}
         onConfirm={handleClearOrders}
+        title="Clear All Orders"
+        message="Are you sure you want to clear all orders? This action cannot be undone."
+        confirmText="Clear All"
+        confirmStyle="danger"
       />
 
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white pb-20">
@@ -442,7 +524,85 @@ export default function Home() {
           <div className="text-center mb-12">
             <h1 className="text-4xl font-light text-[#1d4f91] mb-3 tracking-tight">Monday Momo Order</h1>
             <p className="text-gray-500 text-lg">Order your favorite momos for Monday delivery</p>
+            
+            {/* Configuration Button */}
+            <button
+              onClick={() => setIsConfiguring(!isConfiguring)}
+              className="mt-4 px-4 py-2 text-sm text-gray-600 hover:text-[#1d4f91] bg-white border border-gray-200 rounded-lg hover:border-[#1d4f91]/30 transition-colors"
+            >
+              {isConfiguring ? 'Hide Configuration' : 'Configure Names'}
+            </button>
           </div>
+
+          {/* Name Configuration Section */}
+          {isConfiguring && (
+            <div className="mb-8 bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-gray-100 shadow-sm">
+              <h2 className="text-2xl font-light text-[#1d4f91] mb-6">Name Configuration</h2>
+              
+              {/* Add New Name */}
+              <div className="flex gap-4 mb-6">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Enter new name"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#1d4f91] focus:ring-1 focus:ring-[#1d4f91]"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="newNameSoySauce"
+                    checked={newNameSoySauce}
+                    onChange={(e) => setNewNameSoySauce(e.target.checked)}
+                    className="w-4 h-4 text-[#1d4f91] rounded-lg border-gray-300 focus:ring-[#1d4f91]"
+                  />
+                  <label htmlFor="newNameSoySauce" className="text-sm text-gray-600">
+                    Default Soy Sauce
+                  </label>
+                </div>
+                <button
+                  onClick={handleAddName}
+                  disabled={!newName.trim()}
+                  className="px-4 py-2 bg-[#1d4f91] text-white rounded-xl hover:bg-[#15396d] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add Name
+                </button>
+              </div>
+
+              {/* Name List */}
+              <div className="space-y-3">
+                {nameConfigs.map((config) => (
+                  <div key={config.name} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <span className="font-medium text-gray-700">{config.name}</span>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`soySauce_${config.name}`}
+                          checked={config.defaultSoySauce}
+                          onChange={(e) => handleUpdateNamePreference(config.name, e.target.checked)}
+                          className="w-4 h-4 text-[#1d4f91] rounded-lg border-gray-300 focus:ring-[#1d4f91]"
+                        />
+                        <label htmlFor={`soySauce_${config.name}`} className="text-sm text-gray-600">
+                          Default Soy Sauce
+                        </label>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveName(config.name)}
+                        className="p-2 text-gray-400 hover:text-red-500 rounded-lg"
+                      >
+                        <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Order Statistics */}
           {orders.length > 0 && (
@@ -457,12 +617,12 @@ export default function Home() {
               </div>
             </div>
           )}
-          
+
+          {/* Order Form */}
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-10">
-            {/* Order Form */}
             <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-gray-100 shadow-sm">
               <h2 className="text-2xl font-light text-[#1d4f91] mb-8">Place Your Order</h2>
-              
+
               {/* Quick Order Buttons */}
               <div className="mb-8">
                 <p className="text-sm font-medium text-gray-500 mb-4">Quick Order Options:</p>
@@ -496,25 +656,24 @@ export default function Home() {
                   <label className="block text-sm font-medium text-gray-500 mb-3">Your Name</label>
                   
                   {/* Predefined Names */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {predefinedNames.map((predefinedName) => (
-                      <button
-                        key={predefinedName}
-                        type="button"
-                        onClick={() => {
-                          setName(predefinedName);
-                          setErrors(prev => ({ ...prev, name: '' }));
-                        }}
-                        className={`px-3 py-2.5 text-sm rounded-xl transition-all duration-200 ${
-                          name === predefinedName
-                            ? 'bg-gradient-to-br from-[#1d4f91] to-[#15396d] text-white shadow-md'
-                            : 'bg-white border border-gray-200 text-gray-600 hover:border-[#1d4f91]/30 hover:shadow-sm'
-                        }`}
-                      >
-                        {predefinedName}
-                      </button>
-                    ))}
-                  </div>
+                  {nameConfigs.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {nameConfigs.map((config) => (
+                        <button
+                          key={config.name}
+                          type="button"
+                          onClick={() => handleNameSelect(config.name)}
+                          className={`px-3 py-2.5 text-sm rounded-xl transition-all duration-200 ${
+                            name === config.name
+                              ? 'bg-gradient-to-br from-[#1d4f91] to-[#15396d] text-white shadow-md'
+                              : 'bg-white border border-gray-200 text-gray-600 hover:border-[#1d4f91]/30 hover:shadow-sm'
+                          }`}
+                        >
+                          {config.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Custom Name Input */}
                   <div className="space-y-1">
