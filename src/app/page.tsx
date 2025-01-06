@@ -676,7 +676,7 @@ export default function Home() {
                 <div className="space-y-6">
                   {Object.entries(groupedOrders).map(([name, userOrders]) => (
                     <div key={name} className="bg-gray-50 rounded-xl p-4">
-                      <h3 className="font-medium text-gray-800 mb-3">{name}'s Orders</h3>
+                      <h3 className="font-medium text-gray-800 mb-3">{name}&apos;s Orders</h3>
                       <div className="space-y-3">
                         {userOrders.map((order, index) => (
                           <div key={index} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm group relative hover:shadow-md transition-all duration-200">
