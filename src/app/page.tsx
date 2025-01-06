@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
-import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
+import { useState, useEffect, Fragment, useCallback } from 'react';
+import { Document, Page, Text, View, StyleSheet, pdf, Svg, Path, Image } from '@react-pdf/renderer';
+import QRCode from 'qrcode';
 
 interface NameConfig {
   name: string;
@@ -13,6 +14,11 @@ interface Order {
   meatMomos: number;
   veggieMomos: number;
   wantsSoySauce: boolean;
+}
+
+interface OrderHistoryState {
+  orders: Order[][];
+  currentIndex: number;
 }
 
 const anonymizeName = (name: string) => {
@@ -110,6 +116,59 @@ const styles = StyleSheet.create({
     color: '#718096',
     textAlign: 'center' as const,
   },
+  graphSection: {
+    marginBottom: 30,
+    padding: 16,
+    backgroundColor: '#f7fafc',
+    borderRadius: 8,
+  },
+  graph: {
+    marginTop: 16,
+    gap: 12,
+  },
+  graphBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  graphLabel: {
+    width: 60,
+    fontSize: 12,
+    color: '#4a5568',
+  },
+  barContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bar: {
+    height: 20,
+    borderRadius: 4,
+  },
+  barValue: {
+    fontSize: 12,
+    color: '#4a5568',
+  },
+  qrCodeSection: {
+    marginTop: 30,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  qrCodeTitle: {
+    fontSize: 12,
+    color: '#4a5568',
+    marginBottom: 8,
+  },
+  qrCodeSubtitle: {
+    fontSize: 10,
+    color: '#718096',
+    marginTop: 4,
+  },
+  qrCode: {
+    width: 100,
+    height: 100,
+  },
 });
 
 const ConfirmDialog = ({ 
@@ -185,12 +244,41 @@ const ConfirmDialog = ({
 };
 
 const OrderPDF = ({ orders }: { orders: Order[] }) => {
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+
+  useEffect(() => {
+    const generateQRCode = async () => {
+      try {
+        const orderData = {
+          orders,
+          timestamp: new Date().toISOString(),
+          totalAmount: orders.reduce((acc, order) => acc + (order.meatMomos + order.veggieMomos) * 2, 0),
+        };
+        const qrCode = await QRCode.toDataURL(JSON.stringify(orderData), {
+          errorCorrectionLevel: 'M',
+          margin: 2,
+          width: 200,
+        });
+        setQrCodeUrl(qrCode);
+      } catch (err) {
+        console.error('Error generating QR code:', err);
+      }
+    };
+    generateQRCode();
+  }, [orders]);
+
   const totalAmount = orders.reduce((acc, order) => 
     acc + (order.meatMomos + order.veggieMomos) * 2, 0
   );
   const totalMomos = orders.reduce((acc, order) => 
     acc + order.meatMomos + order.veggieMomos, 0
   );
+  const totalMeatMomos = orders.reduce((acc, order) => acc + order.meatMomos, 0);
+  const totalVeggieMomos = orders.reduce((acc, order) => acc + order.veggieMomos, 0);
+
+  // Calculate max value for graph scaling
+  const maxMomos = Math.max(totalMeatMomos, totalVeggieMomos);
+  const graphScale = maxMomos > 0 ? 200 / maxMomos : 1;
 
   // Group orders by name and anonymize the names
   const groupedOrders = orders.reduce((groups, order) => {
@@ -213,6 +301,29 @@ const OrderPDF = ({ orders }: { orders: Order[] }) => {
             month: 'long',
             day: 'numeric'
           })}</Text>
+        </View>
+
+        {/* Order Summary Graph */}
+        <View style={styles.graphSection}>
+          <Text style={styles.sectionTitle}>Order Summary</Text>
+          <View style={styles.graph}>
+            {/* Meat Momos Bar */}
+            <View style={styles.graphBar}>
+              <Text style={styles.graphLabel}>Meat</Text>
+              <View style={styles.barContainer}>
+                <View style={[styles.bar, { width: totalMeatMomos * graphScale, backgroundColor: '#1d4f91' }]} />
+                <Text style={styles.barValue}>{totalMeatMomos}</Text>
+              </View>
+            </View>
+            {/* Veggie Momos Bar */}
+            <View style={styles.graphBar}>
+              <Text style={styles.graphLabel}>Veggie</Text>
+              <View style={styles.barContainer}>
+                <View style={[styles.bar, { width: totalVeggieMomos * graphScale, backgroundColor: '#34d399' }]} />
+                <Text style={styles.barValue}>{totalVeggieMomos}</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         <View style={styles.orderSection}>
@@ -255,6 +366,14 @@ const OrderPDF = ({ orders }: { orders: Order[] }) => {
           </View>
         </View>
 
+        {qrCodeUrl && (
+          <View style={styles.qrCodeSection}>
+            <Text style={styles.qrCodeTitle}>Digital Verification</Text>
+            <Image src={qrCodeUrl} style={styles.qrCode} />
+            <Text style={styles.qrCodeSubtitle}>Scan to verify order details</Text>
+          </View>
+        )}
+
         <Text style={styles.footer}>
           This order was generated on {new Date().toLocaleString('en-CH', {
             timeZone: 'Europe/Zurich',
@@ -288,6 +407,10 @@ export default function Home() {
     meatMomos: '',
     veggieMomos: '',
     total: ''
+  });
+  const [orderHistory, setOrderHistory] = useState<OrderHistoryState>({
+    orders: [],
+    currentIndex: -1
   });
 
   // Load data from localStorage
@@ -330,6 +453,88 @@ export default function Home() {
       localStorage.setItem('momoNameConfigs', JSON.stringify(nameConfigs));
     }
   }, [nameConfigs, isLoaded]);
+
+  // Initialize order history
+  useEffect(() => {
+    if (isLoaded) {
+      setOrderHistory({
+        orders: [orders],
+        currentIndex: 0
+      });
+    }
+  }, [isLoaded]);
+
+  const addToHistory = useCallback((newOrders: Order[]) => {
+    setOrderHistory(prev => {
+      const newHistory = {
+        orders: [...prev.orders.slice(0, prev.currentIndex + 1), newOrders],
+        currentIndex: prev.currentIndex + 1
+      };
+      return newHistory;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    setOrderHistory(prev => {
+      if (prev.currentIndex <= 0) return prev;
+      const newIndex = prev.currentIndex - 1;
+      setOrders([...prev.orders[newIndex]]);
+      return {
+        ...prev,
+        currentIndex: newIndex
+      };
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setOrderHistory(prev => {
+      if (prev.currentIndex >= prev.orders.length - 1) return prev;
+      const newIndex = prev.currentIndex + 1;
+      setOrders([...prev.orders[newIndex]]);
+      return {
+        ...prev,
+        currentIndex: newIndex
+      };
+    });
+  }, []);
+
+  const handleCancelEdit = () => {
+    setEditingOrder(null);
+    setName('');
+    setMeatMomos(0);
+    setVeggieMomos(0);
+    setWantsSoySauce(true);
+    setErrors({ name: '', meatMomos: '', veggieMomos: '', total: '' });
+  };
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Handle shortcuts only when not typing in input fields
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+      } else if (e.key === 'Escape' && editingOrder) {
+        e.preventDefault();
+        handleCancelEdit();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [editingOrder, undo, redo, handleCancelEdit]);
 
   const handleNameSelect = (selectedName: string) => {
     setName(selectedName);
@@ -409,21 +614,20 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
+    if (!isSubmitting && validateForm()) {
       setIsSubmitting(true);
       try {
+        let newOrders: Order[];
         if (editingOrder !== null) {
-          // Update existing order
-          setOrders(prevOrders => {
-            const newOrders = [...prevOrders];
-            newOrders[editingOrder.index] = { name, meatMomos, veggieMomos, wantsSoySauce };
-            return newOrders;
-          });
+          newOrders = [...orders];
+          newOrders[editingOrder.index] = { name, meatMomos, veggieMomos, wantsSoySauce };
+          setOrders(newOrders);
           setEditingOrder(null);
         } else {
-          // Add new order
-          setOrders([...orders, { name, meatMomos, veggieMomos, wantsSoySauce }]);
+          newOrders = [...orders, { name, meatMomos, veggieMomos, wantsSoySauce }];
+          setOrders(newOrders);
         }
+        addToHistory(newOrders);
         setName('');
         setMeatMomos(0);
         setVeggieMomos(0);
@@ -442,15 +646,6 @@ export default function Home() {
     setWantsSoySauce(order.wantsSoySauce);
     setEditingOrder({ index, order });
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleCancelEdit = () => {
-    setEditingOrder(null);
-    setName('');
-    setMeatMomos(0);
-    setVeggieMomos(0);
-    setWantsSoySauce(true);
-    setErrors({ name: '', meatMomos: '', veggieMomos: '', total: '' });
   };
 
   const handleDuplicate = (orderToDuplicate: Order) => {
@@ -496,14 +691,14 @@ export default function Home() {
   const handleDeleteOrder = (indexToDelete: number, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setOrders(prevOrders => {
-      const newOrders = prevOrders.filter((_, index) => index !== indexToDelete);
-      return newOrders;
-    });
+    const newOrders = orders.filter((_, index) => index !== indexToDelete);
+    setOrders(newOrders);
+    addToHistory(newOrders);
   };
 
   const handleClearOrders = () => {
     setOrders([]);
+    addToHistory([]);
     setIsConfirmDialogOpen(false);
   };
 
@@ -937,6 +1132,37 @@ export default function Home() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Add keyboard shortcuts info */}
+      <div className="fixed bottom-4 right-4 text-sm text-gray-500">
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-gray-100">
+          <p className="font-medium mb-2">Keyboard Shortcuts:</p>
+          <ul className="space-y-1">
+            <li>
+              <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Enter</kbd>
+              <span className="ml-2">Submit order</span>
+            </li>
+            <li>
+              <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Esc</kbd>
+              <span className="ml-2">Cancel edit</span>
+            </li>
+            <li>
+              <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">⌘</kbd>
+              +
+              <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Z</kbd>
+              <span className="ml-2">Undo</span>
+            </li>
+            <li>
+              <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">⌘</kbd>
+              +
+              <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">⇧</kbd>
+              +
+              <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Z</kbd>
+              <span className="ml-2">Redo</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </>
   );
