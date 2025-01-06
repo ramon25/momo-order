@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Fragment } from 'react';
-import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
 
 interface Order {
   name: string;
