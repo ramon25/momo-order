@@ -1,0 +1,16 @@
+{
+  "name": "Monday Momo Order",
+  "short_name": "Momo Order",
+  "description": "Order your favorite momos for Monday delivery",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4f91",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+} 
