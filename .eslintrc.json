@@ -2,6 +2,10 @@
   "extends": "next/core-web-vitals",
   "rules": {
     "@typescript-eslint/no-unused-vars": "error",
-    "react/no-unescaped-entities": "off"
+    "react/no-unescaped-entities": "off",
+    "jsx-a11y/alt-text": ["error", {
+      "elements": ["img"],
+      "img": ["Image"]
+    }]
   }
 } 

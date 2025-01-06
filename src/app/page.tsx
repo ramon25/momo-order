@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, Fragment, useCallback } from 'react';
-import { Document, Page, Text, View, StyleSheet, pdf, Svg, Path, Image } from '@react-pdf/renderer';
+import { useState, useEffect, useCallback } from 'react';
+import { Document, Page, Text, View, StyleSheet, pdf, Image } from '@react-pdf/renderer';
 import QRCode from 'qrcode';
 
 interface NameConfig {
@@ -457,10 +457,11 @@ export default function Home() {
   // Initialize order history
   useEffect(() => {
     if (isLoaded) {
-      setOrderHistory({
+      const initialHistory = {
         orders: [orders],
         currentIndex: 0
-      });
+      };
+      setOrderHistory(initialHistory);
     }
   }, [isLoaded, orders]);
 
@@ -478,7 +479,8 @@ export default function Home() {
     setOrderHistory(prev => {
       if (prev.currentIndex <= 0) return prev;
       const newIndex = prev.currentIndex - 1;
-      setOrders([...prev.orders[newIndex]]);
+      const previousOrders = prev.orders[newIndex];
+      setOrders(previousOrders);
       return {
         ...prev,
         currentIndex: newIndex
@@ -490,7 +492,8 @@ export default function Home() {
     setOrderHistory(prev => {
       if (prev.currentIndex >= prev.orders.length - 1) return prev;
       const newIndex = prev.currentIndex + 1;
-      setOrders([...prev.orders[newIndex]]);
+      const nextOrders = prev.orders[newIndex];
+      setOrders(nextOrders);
       return {
         ...prev,
         currentIndex: newIndex
