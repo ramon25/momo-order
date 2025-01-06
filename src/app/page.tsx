@@ -440,6 +440,55 @@ export default function Home() {
     loadData();
   }, []);
 
+  // Initialize order history
+  useEffect(() => {
+    if (isLoaded) {
+      const savedOrders = localStorage.getItem('momoOrders');
+      const initialOrders = savedOrders ? JSON.parse(savedOrders) : [];
+      setOrderHistory({
+        orders: [initialOrders],
+        currentIndex: 0
+      });
+    }
+  }, [isLoaded]); // Only run when isLoaded changes
+
+  const addToHistory = useCallback((newOrders: Order[]) => {
+    setOrderHistory(prev => {
+      // Remove any future history entries when adding a new state
+      const newHistory = {
+        orders: [...prev.orders.slice(0, prev.currentIndex + 1), [...newOrders]],
+        currentIndex: prev.currentIndex + 1
+      };
+      return newHistory;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    setOrderHistory(prev => {
+      if (prev.currentIndex <= 0) return prev;
+      const newIndex = prev.currentIndex - 1;
+      const previousOrders = [...prev.orders[newIndex]];
+      setOrders(previousOrders);
+      return {
+        ...prev,
+        currentIndex: newIndex
+      };
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setOrderHistory(prev => {
+      if (prev.currentIndex >= prev.orders.length - 1) return prev;
+      const newIndex = prev.currentIndex + 1;
+      const nextOrders = [...prev.orders[newIndex]];
+      setOrders(nextOrders);
+      return {
+        ...prev,
+        currentIndex: newIndex
+      };
+    });
+  }, []);
+
   // Save orders to localStorage whenever they change
   useEffect(() => {
     if (isLoaded) {
@@ -453,53 +502,6 @@ export default function Home() {
       localStorage.setItem('momoNameConfigs', JSON.stringify(nameConfigs));
     }
   }, [nameConfigs, isLoaded]);
-
-  // Initialize order history
-  useEffect(() => {
-    if (isLoaded) {
-      const initialHistory = {
-        orders: [orders],
-        currentIndex: 0
-      };
-      setOrderHistory(initialHistory);
-    }
-  }, [isLoaded, orders]);
-
-  const addToHistory = useCallback((newOrders: Order[]) => {
-    setOrderHistory(prev => {
-      const newHistory = {
-        orders: [...prev.orders.slice(0, prev.currentIndex + 1), newOrders],
-        currentIndex: prev.currentIndex + 1
-      };
-      return newHistory;
-    });
-  }, []);
-
-  const undo = useCallback(() => {
-    setOrderHistory(prev => {
-      if (prev.currentIndex <= 0) return prev;
-      const newIndex = prev.currentIndex - 1;
-      const previousOrders = prev.orders[newIndex];
-      setOrders(previousOrders);
-      return {
-        ...prev,
-        currentIndex: newIndex
-      };
-    });
-  }, []);
-
-  const redo = useCallback(() => {
-    setOrderHistory(prev => {
-      if (prev.currentIndex >= prev.orders.length - 1) return prev;
-      const newIndex = prev.currentIndex + 1;
-      const nextOrders = prev.orders[newIndex];
-      setOrders(nextOrders);
-      return {
-        ...prev,
-        currentIndex: newIndex
-      };
-    });
-  }, []);
 
   const handleCancelEdit = useCallback(() => {
     setEditingOrder(null);
@@ -1104,6 +1106,28 @@ export default function Home() {
                 </span>
               </div>
               <div className="flex gap-3 w-full sm:w-auto">
+                <div className="flex gap-2 mr-2">
+                  <button
+                    onClick={undo}
+                    disabled={orderHistory.currentIndex <= 0}
+                    className="p-2 text-gray-400 hover:text-[#1d4f91] disabled:opacity-30 disabled:hover:text-gray-400 rounded-lg transition-colors"
+                    title="Undo (⌘Z)"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={redo}
+                    disabled={orderHistory.currentIndex >= orderHistory.orders.length - 1}
+                    className="p-2 text-gray-400 hover:text-[#1d4f91] disabled:opacity-30 disabled:hover:text-gray-400 rounded-lg transition-colors"
+                    title="Redo (⌘⇧Z)"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+                    </svg>
+                  </button>
+                </div>
                 <button
                   onClick={async () => {
                     try {
