@@ -9,12 +9,6 @@ import { Order, NameConfig, OrderHistoryState } from '../types';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { OrderPDF } from '../components/pdf/OrderPDF';
 
-const anonymizeName = (name: string) => {
-  if (name.length <= 2) return name;
-  return `${name[0]}${'.'.repeat(Math.min(3, name.length - 2))}${name[name.length - 1]}`;
-};
-
-
 export default function Home() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [nameConfigs, setNameConfigs] = useState<NameConfig[]>([]);
@@ -222,9 +216,9 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen p-8 bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="flex justify-center mb-8">
-        <Logo className="w-16 h-16" />
+    <main className="min-h-screen p-4 sm:p-8 bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex justify-center mb-4 sm:mb-8">
+        <Logo className="w-12 h-12 sm:w-16 sm:h-16" />
       </div>
       <div className="max-w-4xl mx-auto">
         <ConfirmDialog
@@ -238,15 +232,15 @@ export default function Home() {
         />
 
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white pb-20">
-          <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-5xl">
-            <div className="text-center mb-12">
-              <h1 className="text-4xl font-light text-[#1d4f91] mb-3 tracking-tight">Monday Momo Order</h1>
-              <p className="text-gray-500 text-lg">Order your favorite momos for Monday delivery</p>
+          <main className="container mx-auto px-2 sm:px-6 py-4 sm:py-12 max-w-5xl">
+            <div className="text-center mb-8 sm:mb-12">
+              <h1 className="text-3xl sm:text-4xl font-light text-[#1d4f91] mb-2 sm:mb-3 tracking-tight">Monday Momo Order</h1>
+              <p className="text-gray-500 text-base sm:text-lg">Order your favorite momos for Monday delivery</p>
               
               {/* Configuration Button */}
               <button
                 onClick={() => setIsConfiguring(!isConfiguring)}
-                className="mt-4 px-4 py-2 text-sm text-gray-600 hover:text-[#1d4f91] bg-white border border-gray-200 rounded-lg hover:border-[#1d4f91]/30 transition-colors"
+                className="mt-3 sm:mt-4 px-3 sm:px-4 py-1.5 sm:py-2 text-sm text-gray-600 hover:text-[#1d4f91] bg-white border border-gray-200 rounded-lg hover:border-[#1d4f91]/30 transition-colors"
               >
                 {isConfiguring ? 'Hide Configuration' : 'Configure Names'}
               </button>
@@ -264,20 +258,20 @@ export default function Home() {
 
             {/* Order Statistics */}
             {orders.length > 0 && (
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="bg-blue-50/50 rounded-xl p-4 text-center">
-                  <p className="text-[#1d4f91] text-2xl font-medium">{totalMeatMomos}</p>
-                  <p className="text-gray-600 text-sm">Total Meat Momos</p>
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-6 sm:mb-8">
+                <div className="bg-blue-50/50 rounded-xl p-3 sm:p-4 text-center">
+                  <p className="text-[#1d4f91] text-xl sm:text-2xl font-medium">{totalMeatMomos}</p>
+                  <p className="text-gray-600 text-xs sm:text-sm">Total Meat Momos</p>
                 </div>
-                <div className="bg-green-50/50 rounded-xl p-4 text-center">
-                  <p className="text-[#1d4f91] text-2xl font-medium">{totalVeggieMomos}</p>
-                  <p className="text-gray-600 text-sm">Total Veggie Momos</p>
+                <div className="bg-green-50/50 rounded-xl p-3 sm:p-4 text-center">
+                  <p className="text-[#1d4f91] text-xl sm:text-2xl font-medium">{totalVeggieMomos}</p>
+                  <p className="text-gray-600 text-xs sm:text-sm">Total Veggie Momos</p>
                 </div>
               </div>
             )}
 
             {/* Order Form and Summary */}
-            <div className="grid lg:grid-cols-2 gap-6 lg:gap-10">
+            <div className="grid lg:grid-cols-2 gap-4 lg:gap-10">
               <OrderForm
                 nameConfigs={nameConfigs}
                 onSubmit={handleSubmit}
@@ -287,11 +281,11 @@ export default function Home() {
               />
 
               {/* Order Summary */}
-              <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-gray-100 shadow-sm">
-                <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-light text-[#1d4f91]">Order Summary</h2>
+              <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 sm:p-8 border border-gray-100 shadow-sm">
+                <div className="flex justify-between items-center mb-6 sm:mb-8">
+                  <h2 className="text-xl sm:text-2xl font-light text-[#1d4f91]">Order Summary</h2>
                   {orders.length > 0 && (
-                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
+                    <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
                       {orders.length} order{orders.length !== 1 ? 's' : ''}
                     </span>
                   )}
@@ -312,11 +306,11 @@ export default function Home() {
                 ) : (
                   <div className="space-y-6">
                     {Object.entries(groupedOrders).map(([name, userOrders]) => (
-                      <div key={name} className="bg-gray-50 rounded-xl p-4">
-                        <h3 className="font-medium text-gray-800 mb-3">{name}&apos;s Orders</h3>
-                        <div className="space-y-3">
+                      <div key={name} className="bg-gray-50 rounded-xl p-3 sm:p-4">
+                        <h3 className="font-medium text-gray-800 mb-2 sm:mb-3">{name}&apos;s Orders</h3>
+                        <div className="space-y-2 sm:space-y-3">
                           {userOrders.map((order, index) => (
-                            <div key={index} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm group relative hover:shadow-md transition-all duration-200">
+                            <div key={index} className="bg-white rounded-xl p-3 sm:p-4 border border-gray-100 shadow-sm group relative hover:shadow-md transition-all duration-200">
                               <div className="absolute top-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
                                 <button
                                   onClick={() => handleEdit(order, index)}
@@ -351,7 +345,7 @@ export default function Home() {
                                   CHF {(order.meatMomos + order.veggieMomos) * 2}
                                 </span>
                               </div>
-                              <div className="text-sm text-gray-600 space-y-1.5">
+                              <div className="text-xs sm:text-sm text-gray-600 space-y-1 sm:space-y-1.5">
                                 {order.meatMomos > 0 && (
                                   <p>🥩 Meat Momos: {order.meatMomos}</p>
                                 )}
@@ -376,15 +370,15 @@ export default function Home() {
           {/* Sticky Total Bar */}
           {orders.length > 0 && (
             <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 shadow-lg">
-              <div className="container mx-auto px-4 sm:px-6 py-4 max-w-5xl flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div className="text-lg">
+              <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4 max-w-5xl flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
+                <div className="text-base sm:text-lg">
                   <span className="text-gray-600">Total:</span>
                   <span className="ml-2 text-[#1d4f91] font-medium">
                     CHF {totalAmount}
                   </span>
                 </div>
-                <div className="flex gap-3 w-full sm:w-auto">
-                  <div className="flex gap-2 mr-2">
+                <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
+                  <div className="flex gap-1 sm:gap-2 mr-1 sm:mr-2">
                     <button
                       onClick={undo}
                       disabled={orderHistory.currentIndex <= 0}
@@ -423,13 +417,13 @@ export default function Home() {
                         alert('Error generating PDF. Please try again.');
                       }
                     }}
-                    className="flex-1 sm:flex-none bg-gradient-to-br from-[#1d4f91] to-[#15396d] hover:from-[#15396d] hover:to-[#102a4f] text-white font-normal py-2.5 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
+                    className="flex-1 sm:flex-none bg-gradient-to-br from-[#1d4f91] to-[#15396d] hover:from-[#15396d] hover:to-[#102a4f] text-white font-normal py-2 sm:py-2.5 px-4 sm:px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm"
                   >
                     Download PDF
                   </button>
                   <button
                     onClick={() => setIsConfirmDialogOpen(true)}
-                    className="flex-1 sm:flex-none bg-white border border-gray-200 hover:border-red-200 hover:bg-red-50 text-gray-600 hover:text-red-600 font-normal py-2.5 px-6 rounded-xl transition-all duration-200 text-sm"
+                    className="flex-1 sm:flex-none bg-white border border-gray-200 hover:border-red-200 hover:bg-red-50 text-gray-600 hover:text-red-600 font-normal py-2 sm:py-2.5 px-4 sm:px-6 rounded-xl transition-all duration-200 text-xs sm:text-sm"
                   >
                     Clear All
                   </button>
@@ -440,10 +434,10 @@ export default function Home() {
         </div>
 
         {/* Add keyboard shortcuts info */}
-        <div className="fixed bottom-4 right-4 text-sm text-gray-500">
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-gray-100">
-            <p className="font-medium mb-2">Keyboard Shortcuts:</p>
-            <ul className="space-y-1">
+        <div className="hidden sm:block fixed bottom-4 right-2 sm:right-4 text-xs sm:text-sm text-gray-500">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100">
+            <p className="font-medium mb-1 sm:mb-2">Keyboard Shortcuts:</p>
+            <ul className="space-y-0.5 sm:space-y-1">
               <li>
                 <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Enter</kbd>
                 <span className="ml-2">Submit order</span>
